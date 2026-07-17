@@ -3,7 +3,9 @@ layout: default
 title: Blogs on "aha!" moment
 ---
 
-# Blogs on "Aha!" moments
+# "Aha!" moments
+
+Insights with simplification.
 
 ## Recent Posts
 <ul>
