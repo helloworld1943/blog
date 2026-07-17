@@ -1,7 +1,7 @@
 
 <div align="center">
 
-#  Blogs about interesting things 
+#  Blogs on "aha!" moment
 
 <img src="https://octodex.github.com/images/welcometocat.png" height="200px" />
 
