@@ -3,9 +3,9 @@ layout: default
 title: Blogs on "aha!" moment
 ---
 
-# Welcome to My Blog
+# Blogs on "Aha!" moments
 
-Here you can find all my latest thoughts and notes.
+Insights with simplification.
 
 ## Recent Posts
 <ul>
