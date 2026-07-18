@@ -40,6 +40,7 @@ Example :
           a softbody. For other type of constraints(rigid body ,fluid ) i will not explain here , 
           you can refer to the paper for details. 
 
+
 with C(x) , we could define the internal force easily :
 the internal lambda_force is try to make the system rebalanced (C(x)=0) from the current position which is 
 like hooks' law.  C(Xcurrent + delta x) = - 1/k * Lambda_force  (Hook's law : x = -1/k * F ,negtive sign for restoring force)
@@ -140,18 +141,32 @@ Substituting this displacement equation back into the Taylor expansion results i
 
 $$C(\mathbf{x}) + \nabla C(\mathbf{x})^T \left( \mathbf{M}^{-1} \nabla C(\mathbf{x}) \lambda_{force} \Delta t^2 \right) = -\frac{1}{k} \lambda_{force}$$
 
-### XPBD Parameter Scaling
-To eliminate time-step dependencies, XPBD re-parameterizes the stiffness $k$ and force magnitude $\lambda_{force}$. We define the total Lagrange multiplier $\lambda$ and compliance $\alpha, \tilde{\alpha}$ as:
+### Kinematic Constraints and Restoring Forces
 
-$$\lambda = \lambda_{force} \Delta t^2, \quad \alpha = \frac{1}{k}, \quad \tilde{\alpha} = \frac{\alpha}{\Delta t^2} = \frac{1}{k \Delta t^2}$$
+Given a scalar constraint function $C(\mathbf{x})$, the corresponding internal restoring force can be modeled analogously to Hooke's law. This internal constraint force, denoted by the multiplier $\lambda_f$, acts to restore the system toward equilibrium where $C(\mathbf{x}) = 0$. 
 
-Multiplying the right side by $\frac{\Delta t^2}{\Delta t^2}$ yields:
+By formulating this restorative behavior from the current position $\mathbf{x}$, the constraint violation at a displaced state can be expressed as:
+$$C(\mathbf{x} + \Delta \mathbf{x}) = -\frac{1}{k} \lambda_f$$
+where $k$ represents the constraint stiffness, and the negative sign denotes the restorative nature of the force.
 
-$$C(\mathbf{x}) + \nabla C(\mathbf{x})^T \left( \mathbf{M}^{-1} \nabla C(\mathbf{x}) \lambda \right) = -\left(\frac{1}{k \Delta t^2}\right) (\lambda_{force} \Delta t^2)$$
+Applying a first-order Taylor expansion to the left-hand side yields:
+$$C(\mathbf{x}) + \nabla C(\mathbf{x})^T \Delta \mathbf{x} = -\frac{1}{k} \lambda_f$$
 
-This simplifies to the fundamental continuous XPBD constraint equation:
+Under a generalized mass-displaced system over a time step $\Delta t$, the positional displacement $\Delta \mathbf{x}$ induced by the constraint force is given by:
+$$\Delta \mathbf{x} = \mathbf{M}^{-1} \nabla C(\mathbf{x}) \lambda_f \Delta t^2$$
+Here, $\lambda_f$ acts as a scalar magnitude, ensuring that the generalized force vector $\nabla C(\mathbf{x})\lambda_f$ acts directly along the constraint gradient direction.
 
+Substituting the displacement equation back into the linearized constraint yields the unified system equation:
+$$C(\mathbf{x}) + \nabla C(\mathbf{x})^T \left( \mathbf{M}^{-1} \nabla C(\mathbf{x}) \lambda_f \Delta t^2 \right) = -\frac{1}{k} \lambda_f$$
+
+Following the formulation introduced in Extended Position-Based Dynamics (XPBD), we define the time-independent Lagrange multiplier $\lambda = \lambda_f \Delta t^2$ and the compliance parameter $\alpha = \frac{1}{k}$. To scale compliance appropriately with the time step, we introduce the generalized compliance $\tilde{\alpha} = \frac{\alpha}{\Delta t^2} = \frac{1}{k \Delta t^2}$. 
+
+Multiplying the right-hand side by $\frac{\Delta t^2}{\Delta t^2}$, the relation is rewritten as:
+$$C(\mathbf{x}) + \nabla C(\mathbf{x})^T \left( \mathbf{M}^{-1} \nabla C(\mathbf{x}) \lambda_f \Delta t^2 \right) = -\frac{1}{k \Delta t^2} \left(\lambda_f \Delta t^2\right)$$
+
+Substituting our XPBD definitions simplifies the system to its final implicit form:
 $$C(\mathbf{x}) + \nabla C(\mathbf{x})^T \mathbf{M}^{-1} \nabla C(\mathbf{x}) \lambda = -\tilde{\alpha} \lambda$$
+
 
 ---
 
@@ -172,7 +187,7 @@ $$C(\mathbf{x}_k + \Delta \mathbf{x} + \delta \mathbf{x}) = C(\mathbf{x}_k) + \n
 
 $$= C(\mathbf{x}_{k+1}) + \nabla C(\mathbf{x}_k)^T \left( \mathbf{M}^{-1} \nabla C(\mathbf{x}_k) \delta \lambda \Delta t^2 \right) = -\alpha (\lambda_k + \delta \lambda) \Delta t^2$$
 
-> **Computational Note:** For optimized runtime efficiency, it is standard practice to assume that the constraint gradient is invariant across localized updates ($$\nabla C(\mathbf{x}_k) \approx \nabla C(\mathbf{x}_{k+1})$$), or to stick strictly to the initial configuration state $$\nabla C(\mathbf{x}_0)$$.
+> **Computational Note:** For optimized runtime efficiency, it is standard practice to assume that the constraint gradient is invariant across localized updates $$\nabla C(\mathbf{x}_k) \approx \nabla C(\mathbf{x}_{k+1})$$ or to stick strictly to the initial configuration state $$\nabla C(\mathbf{x}_0)$$.
 
 Given that $\mathbf{M}^{-1}$ is a diagonal matrix, we absorb the $\Delta t^2$ factor into our normalized compliance parameter ($\tilde{\alpha} = \frac{\alpha}{\Delta t^2}$) to match original literature conventions. Isolating the small incremental multiplier $\delta \lambda$ from the matching sides of the final equations reveals the definitive XPBD system update rule:
 
