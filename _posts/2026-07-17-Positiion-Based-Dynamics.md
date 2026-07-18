@@ -2,7 +2,8 @@
 layout: post
 title: 'A Rigorous Mathematical Formulation of Position-Based Dynamics (PBD) and Extended PBD (XPBD)'
 mathjax: true
-by: 'helloworld1934'
+by: "helloworld1934"
+tags: [PBD,XPBD,MATH,PHYSICS]
 ---
 
 <!-- raw before LLM format , lazy work
