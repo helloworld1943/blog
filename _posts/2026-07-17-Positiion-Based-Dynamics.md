@@ -1,9 +1,3 @@
----
-layout: default
-title: "My First Blog Post"
-date: 2026-07-17
----
-
 <!-- raw before LLM format , lazy work
 
 We give a much more logic clear way to represent the math of PBD and XPBD in this blog.
@@ -76,8 +70,10 @@ M^-1 is just a diagnal matrix , redefine the variables with delta t ^2 abbsorbed
 small delta Lambda  =  (-C(Xk+1)-Lambda k * ~alpha)/( Transpose ( Gradient C(Xk)) * M^-1 *Gradient C(Xk) + ~alpha)
 
 --> 
-
-
+---
+layout: post
+title: "A Rigorous Mathematical Formulation of PBD and XPBD"
+---
 
 # A Rigorous Mathematical Formulation of Position-Based Dynamics (PBD) and Extended PBD (XPBD)
 
@@ -87,13 +83,13 @@ This document presents a structured, mathematically transparent derivation of Po
 While the original literature introduces algebraic complexities that mask the underlying intuition, this text delivers a clear, step-by-step mathematical deduction.
 
 * **Primary References:**
-  * Müller et al., [Position-Based Dynamics (2007)](https://matthias-research.github.io/pages/publications/posBasedDyn.pdf)
-  * Macklin et al., [XPBD: Extended Position-Based Dynamics (2016)](https://matthias-research.github.io/pages/publications/XPBD.pdf)
+  * Müller et al., [Position-Based Dynamics (2007)](https://github.io)
+  * Macklin et al., [XPBD: Extended Position-Based Dynamics (2016)](https://github.io)
 
 ---
 
 ## 2. Kinematic Foundations & Force Classification
-Consider a discrete dynamical system consisting of $n$ particles. Each particle $i$ is parameterized by its position $\mathbf{x}\_i \in \mathbb{R}^3$ and elemental mass $m\_i$. Let $\mathbf{M}$ denote the diagonal mass matrix. Under a standard discrete-time Newtonian formulation with a temporal step size $\Delta t$, the position update vector $\Delta \mathbf{x}$ maps directly to the generalized forces acting on the system:
+Consider a discrete dynamical system consisting of $n$ particles. Each particle $i$ is parameterized by its position $\mathbf{x}_i \in \mathbb{R}^3$ and elemental mass $m_i$. Let $\mathbf{M}$ denote the diagonal mass matrix. Under a standard discrete-time Newtonian formulation with a temporal step size $\Delta t$, the position update vector $\Delta \mathbf{x}$ maps directly to the generalized forces acting on the system:
 
 $$
 \Delta \mathbf{x} = \Delta t \, \mathbf{v} = \Delta t^2 \mathbf{M}^{-1} \mathbf{F}
@@ -115,7 +111,7 @@ $$
 The system achieves equilibrium when all constraints are satisfied, such that $C_j(\mathbf{x}) = 0$. 
 
 ### Example: One-Dimensional Distance Constraint
-For a minimal two-particle system with coordinates $\mathbf{x}\_1, \mathbf{x}\_2$ and a target rest length $L$, the distance constraint is expressed as:
+For a minimal two-particle system with coordinates $\mathbf{x}_1, \mathbf{x}_2$ and a target rest length $L$, the distance constraint is expressed as:
 
 $$
 C(\mathbf{x}_1, \mathbf{x}_2) = \|\mathbf{x}_1 - \mathbf{x}_2\| - L
@@ -209,4 +205,3 @@ Given that $\mathbf{M}^{-1}$ is a diagonal matrix, we absorb the $\Delta t^2$ fa
 $$
 \delta \lambda = \frac{-C(\mathbf{x}_{k+1}) - \lambda_k \tilde{\alpha}}{\nabla C(\mathbf{x}_k)^T \mathbf{M}^{-1} \nabla C(\mathbf{x}_k) + \tilde{\alpha}}
 $$
-
