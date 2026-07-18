@@ -1,6 +1,3 @@
 title: helloworld1943
 description: " "
-markdown: kramdown
-kramdown:
-  math_engine: mathjax
-  
+theme: jekyll-theme-hacker
