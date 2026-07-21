@@ -1,6 +1,6 @@
 ---
 layout: post
-title: 'Constraint of Position-Based Dynamics (PBD)'
+title: 'Mathematical Analysis of Geometric Constraints in Position-Based Dynamics (PBD) and XPBD'
 mathjax: true
 author: "helloworld1943"
 date: 2026-07-21
@@ -127,8 +127,6 @@ so after several times 6-9 times Rk will be just Usvd  * Transpose(Vsvd) which i
 
 
 !-->
-
-# Mathematical Analysis of Geometric Constraints in Position-Based Dynamics (PBD) and XPBD
 
 **References:**
 * Müller, M., Heidelberger, B., Hennix, M., & Ratcliff, J. (2007). *Position Based Dynamics*. [[Paper Link](https://github.io)]
