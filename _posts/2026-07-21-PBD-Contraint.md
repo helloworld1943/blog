@@ -198,8 +198,6 @@ after get v_1 we can get R_star optimal. Importantly q0 is initialized from prev
 !-->
 
 
-# A Detailed Analysis of Typical Constraints in (X)PBD
-
 This note presents a detailed analysis of the typical constraints used in Position Based
 Dynamics (PBD) and its extension XPBD. It is based on the following two papers:
 
@@ -258,7 +256,7 @@ $$
 \Delta \mathbf{x}_2 = \frac{1}{m_2}\,\nabla_{\mathbf{x}_2} C\;\lambda\;\Delta t^{2}
 $$
 
-Since $\nabla_{\mathbf{x}_1} C = -\nabla_{\mathbf{x}_2} C$, the two corrections are
+Since $ \nabla_{\mathbf{x}_1} C = -\nabla_{\mathbf{x}_2} C $, the two corrections are
 antiparallel, with magnitudes in the ratio
 
 $$
