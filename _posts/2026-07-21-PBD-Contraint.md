@@ -193,7 +193,7 @@ as lambda1 is the max one ,  you can see when n is large
 
 K^n q0 converges to  λ1^n * c1 * v1 , we can normlize to get v_1 
 
-after get v_1 we can get R_star optimal
+after get v_1 we can get R_star optimal. Importantly q0 is initialized from previous frame q and thus converges much faster. In the first frame q0 = { w: 1, x: 0, y: 0, z: 0 }; C1 !=0 won't happen if q is inherited from previous frame rather then using random vector.
 
 !-->
 
@@ -545,4 +545,6 @@ Since $\lambda_1$ is the largest eigenvalue, $\left(\lambda_i / \lambda_1\right)
 for $i \geq 2$ as $n$ grows, so (assuming $c_1 \neq 0$) $K^{n} q_0$ converges, up to the
 scalar factor $\lambda_1^{n} c_1$, to $v_1$. Normalizing the iterate yields $v_1$, and the
 optimal rotation $R_{\star}$ is then recovered from $q = v_1$ through the quaternion
-parametrization above.
+parametrization above. 
+
+Importantly q0 is initialized from previous frame q and thus converges much faster. In the first frame q0 = { w: 1, x: 0, y: 0, z: 0 }; C1 !=0 won't happen if q is inherited from previous frame rather then using random vector.
