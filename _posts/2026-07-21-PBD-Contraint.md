@@ -256,8 +256,7 @@ $$
 \Delta \mathbf{x}_2 = \frac{1}{m_2}\,\nabla_{\mathbf{x}_2} C\;\lambda\;\Delta t^{2}
 $$
 
-Since $ \nabla_{\mathbf{x}_1} C = -\nabla_{\mathbf{x}_2} C $, the two corrections are
-antiparallel, with magnitudes in the ratio
+Since the two corrections are antiparallel, with magnitudes in the ratio
 
 $$
 \frac{\|\Delta \mathbf{x}_1\|}{\|\Delta \mathbf{x}_2\|} = \frac{m_2}{m_1}
