@@ -86,6 +86,11 @@ define sum[ Mi*Ai*Transpose(Bi) ] = transpose(A)
 
 to maxmize Trace(R_star*transpose(A))
 
+
+------------------------------------------------------------
+Method 1. Newton-Schulz method
+
+
 polar decompose A = R*S ,  
 here if det(A)!=0 , then we always get a unique decompostion. 
 We need to make sure actually det(A) != 0 
@@ -104,14 +109,13 @@ when Transpose(Q) * G * Q = I will make it maxmized.
 
 so that is Transpose(Q) * transpose(R)*R_star * Q = I  => transpose(R) * R_star = I => R_star =  R
 
+to directly get R_polar from A = R_polar*S is not easy , we use the following loop to approximated it .
 
 svd decompose A = Usvd*Sigma*Transpose(Vsvd) ,as Usvd , Vsvd are othornormal , Transpose(Vsvd)*Vsvd = I 
 so A =   Usvd*Transpose(Vsvd)*Vsvd*Sigma*Transpose(Vsvd) 
      =  (Usvd*Transpose(Vsvd)) * (Vsvd*Sigma*Transpose(Vsvd))
 
 so Rpolar = (Usvd*Transpose(Vsvd)) and S = (Vsvd*Sigma*Transpose(Vsvd))
-
-Rather than using SVD decomposition which is hard we use Newton-Schulz alogrithm to calculate the Rpolar which is fast and easy to implement.
 
 Rk+1 = 1/2*(Rk+Transpose(Rk^-1))  , where R0 = A , 
 
@@ -123,224 +127,422 @@ Rk+1 = Usvd * [1/2 * (Sigma_k+Sigma_k^-1)] * Transpose(Vsvd)
 
 as we can see from k to k+1 only the middel term changes , actually it changes toward I
 
-so after several times 6-9 times Rk will be just Usvd  * Transpose(Vsvd) which is what we need
+so after several times 6-9 times Rk will be just Usvd  * Transpose(Vsvd) =  Rpolar which is what we need
+
+------------------------------------------------------------
+
+Method 2. Horn's method
+
+Trace(R_star*transpose(A)) = Trace(transpose(A) * R_star)
+
+let M = transpose(A) , Trace(transpose(A) * R_star) = Sum[Sum[Mij* Rij]] (i from 0->2, j from 0->2)
+
+R_star can be writed as the form 
+
+[ 1-2*(y^2+z^2) , 2(xy-wz)      , 2(xz+wy) 
+   2(xy+wz)     , 1-2*(x^2+z^2) , 2(yz-wz) 
+   2(xz-wy)     , 2(yz+wx)      , 1-2*(x^2+y^2)
+]
+
+where q = transpose([w,x,y,z]) is the related quaternion of R_star with w^2+x^2+y^2+z^2=1 
+
+So the Trace(transpose(A) * R_star) = Sum[Sum[Mij* Rij]]
+= w^2(m00 + m11 + m22) + x^2(m00 - m11 - m22)
++ y^2(-m00 + m11 - m22) + z^2(-m00 - m11 + m22)
++ 2wx(m12 - m21) + 2wy(m20 - m02) + 2wz(m01 - m10)
++ 2xy(m01 + m10) + 2xz(m20 + m02) + 2yz(m12 + m21)
+
+= transpose(q) * [ k00  k01  k02  k03 ] * q
+                 [ k01  k11  k12  k13 ]    
+                 [ k02  k12  k22  k23 ]    
+                 [ k03  k13  k23  k33 ]      
+
+where the K matrix is :
+
+K = [  m00 + m11 + m22       m12 - m21             m20 - m02             m01 - m10        ]
+    [    m12 - m21         m00 - m11 - m22         m01 + m10             m20 + m02        ]
+    [    m20 - m02           m01 + m10          -m00 + m11 - m22         m12 + m21        ]
+    [    m01 - m10           m20 + m02             m12 + m21          -m00 - m11 + m22    ]
 
 
+
+so Trace(transpose(A) * R_star) = transpose(q) * K * q
+
+the K is a sysmetric matrix with eigenvectors v_1, v_2, v_3, v_4  form an orthonormal basis.  
+v_i*v_j=0
+v_i*v_i=1
+
+we can write q = sum(v_i*c_i)
+
+K * q = sum(v_i*c_i*lambda_i)
+
+Trace(transpose(A) * R_star) = transpose(q) * K * q = sum(c_i^2*lambda_i) <= sum(c_i^2*lambda_max)
+
+as ||q||=1 , sum(c_i^2)=1 , so  Trace(transpose(A) * R_star) <= lambda_max
+
+so we can reach this by seting c1=1, 0=c2=c3=c4 , that is q = v_1,
+
+
+now :
+
+K^n q0 = c1 * λ1^n * v1 + c2 * λ2^n * v2 + c3 * λ3^n * v3 + c4 * λ4^n * v4
+
+       = λ1^n * [ c1 * v1 + c2 * (λ2 / λ1)^n * v2 + c3 * (λ3 / λ1)^n * v3 + c4 * (λ4 / λ1)^n * v4 ]
+
+as lambda1 is the max one ,  you can see when n is large  
+
+K^n q0 converges to  λ1^n * c1 * v1 , we can normlize to get v_1 
+
+after get v_1 we can get R_star optimal
 
 !-->
 
 
-This note presents a detailed analysis of the typical constraints used in (X)PBD.
+# A Detailed Analysis of Typical Constraints in (X)PBD
 
-**References**
+This note presents a detailed analysis of the typical constraints used in Position Based
+Dynamics (PBD) and its extension XPBD. It is based on the following two papers:
 
-- PBD paper: [Position Based Dynamics](https://matthias-research.github.io/pages/publications/posBasedDyn.pdf)
-- XPBD paper: [XPBD: Position-Based Simulation of Compliant Constrained Dynamics](https://matthias-research.github.io/pages/publications/XPBD.pdf)
+- [*Position Based Dynamics* (PBD)](https://matthias-research.github.io/pages/publications/posBasedDyn.pdf)
+- [*Small Steps in Physics Simulation* (XPBD)](https://matthias-research.github.io/pages/publications/XPBD.pdf)
 
-## 1. Basic Assumption of PBD
+## 1. The Basic Assumption of PBD
 
-Given a constraint function $C(\mathbf{x})$, the internal force is defined such that it drives the system back to equilibrium, i.e. $C(\mathbf{x}) = 0$, from the current configuration. This is analogous to Hooke's law, $x = -\frac{1}{k}F$, where the negative sign indicates a restoring force:
-
-$$
-C(\mathbf{x}_{\text{current}} + \Delta\mathbf{x}) = -\frac{1}{k}\,\lambda_{\text{force}}
-$$
-
-Applying a first-order Taylor expansion to the left-hand side yields
+Let $C(\mathbf{x})$ be a scalar constraint function defined on the particle positions.
+The associated internal (constraint) force is defined so as to drive the system back to
+the constraint manifold $C(\mathbf{x}) = 0$ from the current configuration, in analogy
+with Hooke's law $x = -\tfrac{1}{k}F$ (the negative sign indicating a restoring force):
 
 $$
-C(\mathbf{x}_{\text{current}}) + \nabla C(\mathbf{x})^{\top}\,\Delta\mathbf{x} = -\frac{1}{k}\,\lambda_{\text{force}}
+C(\mathbf{x}_{\mathrm{cur}} + \Delta \mathbf{x}) = -\frac{1}{k}\,\lambda
 $$
 
-which leads to the position update
+Linearizing the left-hand side with a first-order Taylor expansion gives
 
 $$
-\Delta\mathbf{x} = M^{-1}\,\nabla C\;\lambda_{\text{force}}\;\Delta t^{2}
+C(\mathbf{x}_{\mathrm{cur}}) + \nabla C(\mathbf{x}_{\mathrm{cur}})^{\top}\,\Delta \mathbf{x} = -\frac{1}{k}\,\lambda
 $$
 
-Here $\lambda_{\text{force}}$ is a scalar, and the force vector $\nabla C\,\lambda_{\text{force}}$ acts along the gradient of the constraint, which is physically reasonable.
+and the position correction induced by the constraint force over a time step $\Delta t$ is
 
-## 2. Distance Constraint
+$$
+\Delta \mathbf{x} = \mathbf{M}^{-1}\,\nabla C\;\lambda\;\Delta t^{2}
+$$
 
-The distance constraint between two particles is defined as
+where $\lambda$ (the Lagrange multiplier) is a scalar and $\mathbf{M}$ is the mass matrix.
+The force vector $\nabla C\,\lambda$ points along the gradient of the constraint, which is
+the physically reasonable direction for a restoring force.
+
+## 2. The Distance Constraint
+
+For two particles at $\mathbf{x}_1$ and $\mathbf{x}_2$ with rest distance $d$, define
 
 $$
 C(\mathbf{x}_1, \mathbf{x}_2) = \|\mathbf{x}_1 - \mathbf{x}_2\| - d
 $$
 
-Substituting this into the position update rule gives
+Its gradients are
 
 $$
-\Delta\mathbf{x}_1 = \frac{1}{m_1}\frac{\partial C(\mathbf{x})}{\partial \mathbf{x}_1}\,\lambda_{\text{force}}\,\Delta t^{2},
+\nabla_{\mathbf{x}_1} C = \hat{\mathbf{n}}, \qquad
+\nabla_{\mathbf{x}_2} C = -\hat{\mathbf{n}}, \qquad
+\hat{\mathbf{n}} = \frac{\mathbf{x}_1 - \mathbf{x}_2}{\|\mathbf{x}_1 - \mathbf{x}_2\|}
+$$
+
+Applying the position update $\Delta \mathbf{x} = \mathbf{M}^{-1}\nabla C\,\lambda\,\Delta t^{2}$
+to each particle yields
+
+$$
+\Delta \mathbf{x}_1 = \frac{1}{m_1}\,\nabla_{\mathbf{x}_1} C\;\lambda\;\Delta t^{2},
 \qquad
-\Delta\mathbf{x}_2 = \frac{1}{m_2}\frac{\partial C(\mathbf{x})}{\partial \mathbf{x}_2}\,\lambda_{\text{force}}\,\Delta t^{2}
+\Delta \mathbf{x}_2 = \frac{1}{m_2}\,\nabla_{\mathbf{x}_2} C\;\lambda\;\Delta t^{2}
 $$
 
-Since $\frac{\partial C(\mathbf{x})}{\partial \mathbf{x}_1} = -\frac{\partial C(\mathbf{x})}{\partial \mathbf{x}_2}$, the two displacements point in opposite directions and their magnitudes satisfy
+Since $\nabla_{\mathbf{x}_1} C = -\nabla_{\mathbf{x}_2} C$, the two corrections are
+antiparallel, with magnitudes in the ratio
 
 $$
-\frac{\|\Delta\mathbf{x}_1\|}{\|\Delta\mathbf{x}_2\|} = \frac{m_2}{m_1}
+\frac{\|\Delta \mathbf{x}_1\|}{\|\Delta \mathbf{x}_2\|} = \frac{m_2}{m_1}
 $$
 
-**Interpretation.** This constraint enforces the distance between two particles while distributing the positional correction in inverse proportion to their masses: the heavier particle moves less. This is precisely what the distance constraint means.
+This reveals what the distance constraint really encodes: for two particles required to
+maintain their mutual distance, any violation is corrected in inverse proportion to mass —
+the heavier particle moves less. That is precisely the physical meaning of the constraint.
 
-When a group of particles is connected by such distance constraints between adjacent particles, the whole object behaves like a soft body. No matter how the stiffness parameter $k$ is chosen, the object will still deform under external influence; the value of $k$ only changes the way the object oscillates while it adjusts itself.
+Consequently, when a collection of particles is connected by such constraints between
+neighboring particles, the assembly as a whole behaves like a soft body. No choice of the
+stiffness parameter $k$ makes it truly rigid: the body always deforms under load, and
+different values of $k$ merely change how it oscillates while settling. This observation
+motivates the shape constraint of the next section when rigid behavior is desired.
 
-## 3. Shape Constraint
+## 3. The Shape Constraint (Shape Matching)
 
-To simulate a rigid body, the overall shape must remain unchanged at every time step. The question is how to define such a constraint.
+### 3.1 Problem Formulation
 
-Consider a group of particles $(\mathbf{x}_i, m_i)$ that together form a shape. At rest, the center of mass is
-
-$$
-\mathbf{x}_c^{\text{rest}} = \frac{\sum_i m_i\,\mathbf{x}_i^{\text{rest}}}{\sum_i m_i}
-$$
-
-After the particles have moved, we want the shape to coincide with the rest shape at all times. The most general spatial change that preserves the shape is a translation $\mathbf{t}$ together with a rotation $R$.
-
-The translation is determined by the center of mass of the new configuration,
-
-$$
-\mathbf{x}_c^{\text{new}} = \frac{\sum_i m_i\,\mathbf{x}_i^{\text{new}}}{\sum_i m_i},
-\qquad
-\mathbf{t} = \mathbf{x}_c^{\text{new}} - \mathbf{x}_c^{\text{rest}}
-$$
-
-so that the target position of particle $i$ is
+To simulate a rigid body, the whole shape must be preserved at every time step. Consider a
+group of particles $(\mathbf{x}_i, m_i)$ that together form the shape, whose rest
+configuration has center of mass
 
 $$
-\mathbf{x}_i^{\text{target}} = R\,(\mathbf{x}_i^{\text{rest}} - \mathbf{x}_c^{\text{rest}}) + \mathbf{x}_c^{\text{rest}} + \mathbf{t}
-= R\,(\mathbf{x}_i^{\text{rest}} - \mathbf{x}_c^{\text{rest}}) + \mathbf{x}_c^{\text{new}}
+\mathbf{x}_{c}^{\mathrm{rest}} = \frac{\sum_i m_i\,\mathbf{x}_{i}^{\mathrm{rest}}}{\sum_i m_i}
 $$
 
-The new positions $\mathbf{x}_i^{\text{new}}$ may be scattered arbitrarily; the problem is to find the optimal $R$ and $\mathbf{t}$ that map the rest shape onto them.
-
-### 3.1 The Least-Squares Problem
-
-We define the loss
+After the particles have moved, the new positions $\mathbf{x}_i$ may be scattered
+arbitrarily. The only spatial change that keeps the shape intact is a rigid transform —
+a rotation $R$ and a translation $\mathbf{t}$ — so the target position of particle $i$ is
 
 $$
-\mathcal{L}(R) = \sum_i m_i \,\big\| R\,(\mathbf{x}_i^{\text{rest}} - \mathbf{x}_c^{\text{rest}}) + \mathbf{x}_c^{\text{new}} - \mathbf{x}_i^{\text{new}} \big\|^{2}
+\mathbf{x}_{i}^{\mathrm{target}} = R\,(\mathbf{x}_{i}^{\mathrm{rest}} - \mathbf{x}_{c}^{\mathrm{rest}}) + \mathbf{x}_{c}^{\mathrm{rest}} + \mathbf{t}
+$$
+
+The task is to find the optimal $R$ and $\mathbf{t}$ given the new positions $\mathbf{x}_i$,
+and then to move each particle toward its target $\mathbf{x}_{i}^{\mathrm{target}}$.
+
+### 3.2 Optimal Translation
+
+The translation is a 3-vector and follows immediately by matching the centers of mass.
+With
+
+$$
+\mathbf{x}_{c} = \frac{\sum_i m_i\,\mathbf{x}_i}{\sum_i m_i}
+$$
+
+the optimal translation is
+
+$$
+\mathbf{t} = \mathbf{x}_{c} - \mathbf{x}_{c}^{\mathrm{rest}}
+$$
+
+### 3.3 Optimal Rotation as a Trace Maximization
+
+Define the loss
+
+$$
+\mathcal{L}(R) = \sum_i m_i \left\| R\,(\mathbf{x}_{i}^{\mathrm{rest}} - \mathbf{x}_{c}^{\mathrm{rest}}) + \mathbf{x}_{c} - \mathbf{x}_i \right\|^{2}
 $$
 
 Introducing the relative vectors
 
 $$
-A_i = \mathbf{x}_i^{\text{rest}} - \mathbf{x}_c^{\text{rest}},
+\mathbf{a}_i = \mathbf{x}_{i}^{\mathrm{rest}} - \mathbf{x}_{c}^{\mathrm{rest}},
 \qquad
-B_i = \mathbf{x}_i^{\text{new}} - \mathbf{x}_c^{\text{new}}
+\mathbf{b}_i = \mathbf{x}_i - \mathbf{x}_{c}
 $$
 
 the problem becomes
 
 $$
-\min_{R}\ \mathcal{L}(R) = \sum_i m_i\,\|R A_i - B_i\|^{2}
+\min_{R}\;\mathcal{L}(R) = \sum_i m_i\,\| R\mathbf{a}_i - \mathbf{b}_i \|^{2}
 $$
 
-*Remark:* adding any constant vector to every $B_i$ (for instance, defining $B_i = \mathbf{x}_i^{\text{new}} - \mathbf{t}$ instead) does not affect the optimal rotation, because $\sum_i m_i A_i = \mathbf{0}$.
-
-### 3.2 Reduction to a Trace Maximization
-
-Expanding the squared norm,
+Expanding the squared norm:
 
 $$
-\mathcal{L}(R) = \sum_i m_i\,(R A_i - B_i)^{\top}(R A_i - B_i)
-= \sum_i m_i\left( A_i^{\top} R^{\top} R A_i - A_i^{\top} R^{\top} B_i - B_i^{\top} R A_i + B_i^{\top} B_i \right)
+\mathcal{L}(R) = \sum_i m_i\,(R\mathbf{a}_i - \mathbf{b}_i)^{\top}(R\mathbf{a}_i - \mathbf{b}_i)
+= \sum_i m_i \left( \mathbf{a}_i^{\top} R^{\top} R\,\mathbf{a}_i
+- \mathbf{a}_i^{\top} R^{\top} \mathbf{b}_i
+- \mathbf{b}_i^{\top} R\,\mathbf{a}_i
++ \mathbf{b}_i^{\top} \mathbf{b}_i \right)
 $$
 
-Since $R^{\top}R = I$, and since $A_i^{\top}R^{\top}B_i$ is a scalar and therefore satisfies
-$A_i^{\top}R^{\top}B_i = \left(A_i^{\top}R^{\top}B_i\right)^{\top} = B_i^{\top}R A_i$, the loss simplifies to
+Since $R^{\top} R = I$, and since the scalar
+$\mathbf{a}_i^{\top} R^{\top} \mathbf{b}_i$ equals its own transpose
+$\mathbf{b}_i^{\top} R\,\mathbf{a}_i$, this simplifies to
 
 $$
-\mathcal{L}(R) = \sum_i m_i\left( A_i^{\top}A_i - 2\,B_i^{\top}R A_i + B_i^{\top}B_i \right)
+\mathcal{L}(R) = \sum_i m_i \left( \mathbf{a}_i^{\top}\mathbf{a}_i
+- 2\,\mathbf{b}_i^{\top} R\,\mathbf{a}_i
++ \mathbf{b}_i^{\top}\mathbf{b}_i \right)
 $$
 
-Minimizing $\mathcal{L}$ over $R$ is thus equivalent to finding the rotation $R^{\star}$ that maximizes
+Only the middle term depends on $R$. Hence minimizing $\mathcal{L}$ is equivalent to
+maximizing
 
 $$
-\sum_i m_i\,B_i^{\top} R^{\star} A_i
-= \operatorname{tr}\!\left( R^{\star} \sum_i m_i\,A_i B_i^{\top} \right)
+\sum_i m_i\,\mathbf{b}_i^{\top} R\,\mathbf{a}_i
+= \operatorname{tr}\!\left( R \sum_i m_i\,\mathbf{a}_i \mathbf{b}_i^{\top} \right)
 $$
 
 Defining
 
 $$
-A := \left(\sum_i m_i\,A_i B_i^{\top}\right)^{\top}
+A^{\top} := \sum_i m_i\,\mathbf{a}_i \mathbf{b}_i^{\top}
 $$
 
-the objective is to maximize $\operatorname{tr}(R^{\star} A^{\top})$.
+the optimal rotation $R_{\star}$ is the maximizer of
 
-### 3.3 Optimal Rotation via Polar Decomposition
+$$
+\operatorname{tr}(R_{\star}\, A^{\top})
+$$
 
-Polar decomposition factorizes $A$ as
+The following two sections present two methods for computing $R_{\star}$.
+
+### 3.4 Method 1: Polar Decomposition via the Newton–Schulz Iteration
+
+Polar-decompose
 
 $$
 A = R\,S
 $$
 
-with $R$ a rotation matrix and $S$ a symmetric matrix. If $\det(A) \neq 0$, the decomposition is unique.
+where $R$ is a rotation and $S$ is symmetric positive (semi-)definite. If
+$\det(A) \neq 0$ this decomposition is unique. In a simulation, the degenerate case
+$\det(A) = 0$ is handled by falling back to the previous frame's rotation, while the case
+$\det(A) < 0$ (a reflected configuration) requires additional handling, e.g. correcting
+the SVD-based factorization so that $\det R = +1$.
 
-**Practical considerations.** One must ensure $\det(A) \neq 0$. If $\det(A) = 0$ occurs during simulation, a common fallback is to reuse the rotation from the previous step. The case $\det(A) < 0$ requires special handling (a standard remedy is to negate the column of $U$ associated with the smallest singular value in the SVD of $A$).
-
-Using $A = RS$ and the cyclicity of the trace,
-
-$$
-\operatorname{tr}(R^{\star}A^{\top})
-= \operatorname{tr}(R^{\star}S^{\top}R^{\top})
-= \operatorname{tr}(R^{\star}S R^{\top})
-= \operatorname{tr}(R^{\top}R^{\star}S)
-$$
-
-The product $G := R^{\top}R^{\star}$ is itself a rotation matrix. Since $S$ is symmetric, it can be diagonalized as $S = Q\Sigma Q^{\top}$ with $Q$ orthonormal, so we must maximize
+Substituting $A^{\top} = S^{\top} R^{\top} = S R^{\top}$ (since $S$ is symmetric) and using
+the cyclicity of the trace:
 
 $$
-\operatorname{tr}(G\,Q\Sigma Q^{\top}) = \operatorname{tr}(Q^{\top} G\,Q\,\Sigma)
+\operatorname{tr}(R_{\star} A^{\top})
+= \operatorname{tr}(R_{\star}\, S^{\top} R^{\top})
+= \operatorname{tr}(R_{\star}\, S\, R^{\top})
+= \operatorname{tr}(R^{\top} R_{\star}\, S)
 $$
 
-Both $Q$ and $G$ are orthonormal (as $R^{\star}$ and $R^{\top}$ are orthonormal), hence $Q^{\top}GQ$ is orthonormal as well. Its columns therefore have unit Euclidean norm, so each of its diagonal entries is at most $1$. Since the diagonal entries of $\Sigma$ are non-negative, the trace is maximized exactly when
+Since $S$ is symmetric, it can be diagonalized as $S = Q\,\Sigma\,Q^{\top}$ with $Q$
+orthogonal and $\Sigma = \operatorname{diag}(\sigma_1, \sigma_2, \sigma_3)$,
+$\sigma_i \geq 0$. Writing $G := R^{\top} R_{\star}$ (also a rotation), the objective becomes
 
 $$
-Q^{\top}GQ = I
-\;\Longleftrightarrow\;
-Q^{\top}R^{\top}R^{\star}Q = I
-\;\Longleftrightarrow\;
-R^{\top}R^{\star} = I
-\;\Longleftrightarrow\;
-R^{\star} = R
+\operatorname{tr}(G\,Q\,\Sigma\,Q^{\top}) = \operatorname{tr}(Q^{\top} G\,Q\,\Sigma)
 $$
 
-That is, the optimal rotation is precisely the rotational factor of the polar decomposition of $A$.
-
-### 3.4 Constructing the Polar Factor via SVD
-
-Let the singular value decomposition of $A$ be $A = U\Sigma V^{\top}$, where $U$ and $V$ are orthonormal, so that $V^{\top}V = I$. Then
+The matrix $H := Q^{\top} G Q$ is orthogonal, being a product of orthogonal matrices, so
+each of its columns is a unit vector; in particular $|H_{ii}| \leq 1$. Therefore
 
 $$
-A = U\,\underbrace{V^{\top}V}_{I}\,\Sigma V^{\top}
-= \underbrace{\left(U V^{\top}\right)}_{R_{\text{polar}}}\;\underbrace{\left(V\Sigma V^{\top}\right)}_{S}
+\operatorname{tr}(H\Sigma) = \sum_i H_{ii}\,\sigma_i \;\leq\; \sum_i \sigma_i
 $$
 
-Hence
+with equality if and only if $H = I$. It follows that the maximum is attained at
 
 $$
-R_{\text{polar}} = U V^{\top},
+Q^{\top} R^{\top} R_{\star}\, Q = I
+\;\Longrightarrow\;
+R^{\top} R_{\star} = I
+\;\Longrightarrow\;
+R_{\star} = R
+$$
+
+That is, the optimal rotation is exactly the orthogonal factor of the polar decomposition
+of $A$.
+
+**Relation to the SVD.** Let $A = U\Sigma V^{\top}$ be the singular value decomposition.
+Since $V$ is orthogonal, $V^{\top}V = I$, and
+
+$$
+A = U\Sigma V^{\top}
+= \underbrace{(U V^{\top})}_{R_{\mathrm{polar}}}\;\underbrace{(V \Sigma V^{\top})}_{S}
+$$
+
+so $R_{\mathrm{polar}} = U V^{\top}$ and $S = V\Sigma V^{\top}$.
+
+**Newton–Schulz iteration.** Computing $U V^{\top}$ directly is expensive; instead one
+approximates $R_{\mathrm{polar}}$ by the iteration
+
+$$
+R_{k+1} = \frac{1}{2}\left( R_k + R_k^{-\top} \right), \qquad R_0 = A
+$$
+
+Writing $R_k = U\,\Sigma_k\,V^{\top}$, we have
+$R_k^{-\top} = U\,\Sigma_k^{-1}\,V^{\top}$, and therefore
+
+$$
+R_{k+1} = U \left[ \frac{1}{2}\left( \Sigma_k + \Sigma_k^{-1} \right) \right] V^{\top}
+$$
+
+From $k$ to $k+1$ only the middle factor changes: each singular value is updated by
+$\sigma \leftarrow \tfrac{1}{2}(\sigma + \sigma^{-1})$, which converges to $1$, so that
+$\Sigma_k \to I$. After roughly 6–9 iterations,
+
+$$
+R_k \;\approx\; U V^{\top} = R_{\mathrm{polar}}
+$$
+
+which is exactly the optimal rotation we need.
+
+### 3.5 Method 2: Horn's Method (Quaternion Formulation)
+
+By the cyclicity of the trace,
+
+$$
+\operatorname{tr}(R_{\star} A^{\top}) = \operatorname{tr}(A^{\top} R_{\star})
+$$
+
+Let $M = A^{\top}$ with entries $m_{ij}$, $i, j \in \{0, 1, 2\}$. Then
+
+$$
+\operatorname{tr}(A^{\top} R_{\star}) = \sum_{i,j} m_{ij}\,(R_{\star})_{ji}
+$$
+
+Parametrize $R_{\star}$ by the unit quaternion
+$q = (w, x, y, z)^{\top}$, $w^{2} + x^{2} + y^{2} + z^{2} = 1$:
+
+$$
+R_{\star} =
+\begin{pmatrix}
+1 - 2(y^{2} + z^{2}) & 2(xy - wz) & 2(xz + wy) \\
+2(xy + wz) & 1 - 2(x^{2} + z^{2}) & 2(yz - wx) \\
+2(xz - wy) & 2(yz + wx) & 1 - 2(x^{2} + y^{2})
+\end{pmatrix}
+$$
+
+Substituting and collecting terms gives a quadratic form in $q$:
+
+$$
+\begin{aligned}
+\operatorname{tr}(A^{\top} R_{\star}) =\;&
+w^{2}(m_{00} + m_{11} + m_{22}) + x^{2}(m_{00} - m_{11} - m_{22}) \\
+&+ y^{2}(-m_{00} + m_{11} - m_{22}) + z^{2}(-m_{00} - m_{11} + m_{22}) \\
+&+ 2wx\,(m_{12} - m_{21}) + 2wy\,(m_{20} - m_{02}) + 2wz\,(m_{01} - m_{10}) \\
+&+ 2xy\,(m_{01} + m_{10}) + 2xz\,(m_{20} + m_{02}) + 2yz\,(m_{12} + m_{21})
+\end{aligned}
+$$
+
+$$
+= \; q^{\top} K\, q
+$$
+
+where $K$ is the symmetric $4 \times 4$ matrix
+
+$$
+K =
+\begin{pmatrix}
+m_{00} + m_{11} + m_{22} & m_{12} - m_{21} & m_{20} - m_{02} & m_{01} - m_{10} \\
+m_{12} - m_{21} & m_{00} - m_{11} - m_{22} & m_{01} + m_{10} & m_{20} + m_{02} \\
+m_{20} - m_{02} & m_{01} + m_{10} & -m_{00} + m_{11} - m_{22} & m_{12} + m_{21} \\
+m_{01} - m_{10} & m_{20} + m_{02} & m_{12} + m_{21} & -m_{00} - m_{11} + m_{22}
+\end{pmatrix}
+$$
+
+Being real symmetric, $K$ has an orthonormal eigenbasis
+$\{v_1, v_2, v_3, v_4\}$ with $v_i^{\top} v_j = \delta_{ij}$ and eigenvalues
+$\lambda_1 \geq \lambda_2 \geq \lambda_3 \geq \lambda_4$. Expanding
+$q = \sum_i c_i v_i$:
+
+$$
+Kq = \sum_i c_i \lambda_i v_i,
 \qquad
-S = V\Sigma V^{\top}
+q^{\top} K q = \sum_i c_i^{2} \lambda_i \;\leq\; \lambda_1 \sum_i c_i^{2} = \lambda_1
 $$
 
-### 3.5 Newton–Schulz Iteration
+since $\|q\| = 1$ implies $\sum_i c_i^{2} = 1$. The bound is attained by setting
+$c_1 = 1$, $c_2 = c_3 = c_4 = 0$, i.e. $q = v_1$. Hence:
 
-Rather than computing an SVD, which is expensive, the polar factor can be obtained with the Newton–Schulz iteration, which is fast and easy to implement:
+> **The optimal quaternion is the eigenvector of $K$ associated with its largest eigenvalue.**
 
-$$
-R_{k+1} = \frac{1}{2}\left(R_k + (R_k^{-1})^{\top}\right),
-\qquad R_0 = A
-$$
-
-Writing $R_k = U\Sigma_k V^{\top}$, we have $(R_k^{-1})^{\top} = U\Sigma_k^{-1}V^{\top}$, and therefore
+**Power iteration.** The dominant eigenvector can be computed by repeatedly applying $K$
+to an arbitrary initial vector $q_0 = \sum_i c_i v_i$:
 
 $$
-R_{k+1} = U\left[\frac{1}{2}\left(\Sigma_k + \Sigma_k^{-1}\right)\right]V^{\top}
+K^{n} q_0 = \sum_i c_i \lambda_i^{n} v_i
+= \lambda_1^{n}\left[ c_1 v_1 + \sum_{i=2}^{4} c_i \left( \frac{\lambda_i}{\lambda_1} \right)^{n} v_i \right]
 $$
 
-From iteration $k$ to $k+1$, only the middle factor changes, and it converges toward the identity. After roughly 6–9 iterations, $R_k \approx UV^{\top}$, which is exactly the polar rotation we need.
-
+Since $\lambda_1$ is the largest eigenvalue, $\left(\lambda_i / \lambda_1\right)^{n} \to 0$
+for $i \geq 2$ as $n$ grows, so (assuming $c_1 \neq 0$) $K^{n} q_0$ converges, up to the
+scalar factor $\lambda_1^{n} c_1$, to $v_1$. Normalizing the iterate yields $v_1$, and the
+optimal rotation $R_{\star}$ is then recovered from $q = v_1$ through the quaternion
+parametrization above.
